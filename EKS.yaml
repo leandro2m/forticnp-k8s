@@ -1,0 +1,443 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Amazon EKS - Node Group
+Parameters:
+  KeyName:
+    Type: "AWS::EC2::KeyPair::KeyName"
+    Description: The EC2 Key Pair to allow SSH access to the instances
+  ClusterName:
+    Type: String
+    Description: The cluster name provided when the cluster was created. If it is incorrect, nodes will not be able to join the cluster.
+    Default: FortiCNPEKS
+  BootstrapArguments:
+    Type: String
+    Default: ""
+    Description: "Arguments to pass to the bootstrap script. See files/bootstrap.sh in https://github.com/awslabs/amazon-eks-ami"
+  NodeImageIdSSMParam:
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Default: /aws/service/eks/optimized-ami/1.22/amazon-linux-2/recommended/image_id
+    Description: AWS Systems Manager Parameter Store parameter of the AMI ID for the worker node instances.
+  NodeGroupName:
+    Type: String
+    Default: EKSNodeGroup
+    Description: Unique identifier for the Node Group.
+
+Resources:
+
+  ControlPlaneRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+            Effect: Allow
+            Principal:
+              Service:
+                - eks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+        - arn:aws:iam::aws:policy/AmazonEKSServicePolicy
+  
+  # VPC EKS
+
+  VPCEKS:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: 10.100.0.0/16
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+      - Key: Name
+        Value: EKS-VPC
+  
+  PublicSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPCEKS
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      CidrBlock: 10.100.0.0/20
+      Tags:
+      - Key: Name
+        Value: PublicSubnet1-AZ1
+      MapPublicIpOnLaunch: true
+  
+  PublicSubnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPCEKS
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      CidrBlock: 10.100.16.0/20
+      Tags:
+      - Key: Name
+        Value: PublicSubnet2-AZ2
+      MapPublicIpOnLaunch: true
+  
+  PrivateSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPCEKS
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      CidrBlock: 10.100.32.0/20
+      Tags:
+      - Key: Name
+        Value: PrivateSubnet1-AZ1
+      - Key: "kubernetes.io/role/internal-elb"
+        Value: 1
+      MapPublicIpOnLaunch: false
+  
+  PrivateSubnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPCEKS
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      CidrBlock: 10.100.48.0/20
+      Tags:
+      - Key: Name
+        Value: PrivateSubnet2-AZ2
+      - Key: "kubernetes.io/role/internal-elb"
+        Value: 1
+      MapPublicIpOnLaunch: false
+  
+  
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Join [_, [!Ref 'AWS::StackName']]
+        - Key: Network
+          Value: Public
+  
+  GatewayToInternet:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref VPCEKS
+      InternetGatewayId: !Ref InternetGateway
+  
+  PublicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPCEKS
+      Tags:
+        - Key: Network
+          Value: Public
+  
+  PublicRoute:
+    Type: 'AWS::EC2::Route'
+    DependsOn: GatewayToInternet
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  
+  PublicSubnet1RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+  
+  PublicSubnet2RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+  
+  NatGateway:
+    Type: "AWS::EC2::NatGateway"
+    DependsOn: NatPublicIP
+    Properties: 
+      AllocationId: !GetAtt NatPublicIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+  
+  NatPublicIP:
+    Type: "AWS::EC2::EIP"
+    DependsOn: VPCEKS
+    Properties:
+      Domain: vpc
+  
+  PrivateRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPCEKS
+      Tags:
+        - Key: Network
+          Value: Private
+  
+  PrivateRoute:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+  
+  PrivateSubnet1RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+  
+  PrivateSubnet2RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+  ControlPlaneSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Cluster communication with worker nodes
+      VpcId: !Ref VPCEKS
+
+  # EKS Control Plane
+
+  EKSCluster:
+    Type: "AWSQS::EKS::Cluster"
+    Properties:
+      Name: !Ref ClusterName
+      RoleArn: !GetAtt ControlPlaneRole.Arn
+      KubernetesNetworkConfig:
+        ServiceIpv4Cidr: "192.168.0.0/16"
+      ResourcesVpcConfig:
+        SubnetIds: [!Ref PublicSubnet1, !Ref PublicSubnet2] 
+        SecurityGroupIds: [!Ref ControlPlaneSecurityGroup]
+        EndpointPrivateAccess: false
+        EndpointPublicAccess: true
+      EnabledClusterLoggingTypes: ["api","audit","authenticator","controllerManager", "scheduler"]
+      KubernetesApiAccess:
+        Users:
+          - Arn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:user/cli"
+            Username: "CliUser"
+            Groups: ["system:masters"]
+        Roles:
+          - Arn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/my-role"
+            Username: "AdminRole"
+            Groups: ["system:masters"]
+        Users:
+          - Arn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:user/eks"
+            Username: "CliUser"
+            Groups: ["system:masters"]
+        Roles:
+          - Arn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/my-role"
+            Username: "AdminRole"
+            Groups: ["system:masters"]
+      Tags:
+        - Key: ClusterName
+          Value: !Ref ClusterName
+
+      
+
+ #============================================================================#
+  # Control plane security group
+  #============================================================================#
+
+  ControlPlaneSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for the elastic network interfaces between the control plane and the worker nodes
+      VpcId: !Ref VPCEKS
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-ControlPlaneSecurityGroup"
+
+  ControlPlaneIngressFromWorkerNodesHttps:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow incoming HTTPS traffic (TCP/443) from worker nodes (for API server)
+      GroupId: !Ref ControlPlaneSecurityGroup
+      SourceSecurityGroupId: !Ref WorkerNodesSecurityGroup
+      IpProtocol: tcp
+      ToPort: 443
+      FromPort: 443
+  ControlPlaneEgressToWorkerNodesKubelet:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allow outgoing kubelet traffic (TCP/10250) to worker nodes
+      GroupId: !Ref ControlPlaneSecurityGroup
+      DestinationSecurityGroupId: !Ref WorkerNodesSecurityGroup
+      IpProtocol: tcp
+      FromPort: 10250
+      ToPort: 10250
+  ControlPlaneEgressToWorkerNodesHttps:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allow outgoing HTTPS traffic (TCP/442) to worker nodes (for pods running extension API servers)
+      GroupId: !Ref ControlPlaneSecurityGroup
+      DestinationSecurityGroupId: !Ref WorkerNodesSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+
+
+#============================================================================#
+  # Worker nodes security group
+  # Note: default egress rule (allow all traffic to all destinations) applies
+  #============================================================================#
+
+  WorkerNodesSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for all the worker nodes
+      VpcId: !Ref VPCEKS
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-WorkerNodesSecurityGroup"
+        - Key: !Sub "kubernetes.io/cluster/${EKSCluster}"
+          Value: "owned"
+  WorkerNodesIngressFromWorkerNodes:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow all incoming traffic from other worker nodes
+      GroupId: !Ref WorkerNodesSecurityGroup
+      SourceSecurityGroupId: !Ref WorkerNodesSecurityGroup
+      IpProtocol: "-1"
+  WorkerNodesIngressFromControlPlaneKubelet:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow incoming kubelet traffic (TCP/10250) from control plane 
+      GroupId: !Ref WorkerNodesSecurityGroup
+      SourceSecurityGroupId: !Ref ControlPlaneSecurityGroup
+      IpProtocol: tcp
+      FromPort: 10250
+      ToPort: 10250
+  WorkerNodesIngressFromControlPlaneHttps:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow incoming HTTPS traffic (TCP/443) from control plane (for pods running extension API servers)
+      GroupId: !Ref WorkerNodesSecurityGroup
+      SourceSecurityGroupId: !Ref ControlPlaneSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+# Node Instance Role
+
+  NodeInstanceRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+        - "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+        - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        - "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
+      Path: /
+  NodeInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      Path: /
+      Roles:
+        - Ref: NodeInstanceRole
+
+  NodeSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: Security group for all nodes in the cluster
+      Tags:
+        - Key: !Sub kubernetes.io/cluster/${ClusterName}
+          Value: owned
+      VpcId: !Ref VPCEKS
+
+ 
+  NodeSecurityGroupIngress:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    DependsOn: NodeSecurityGroup
+    Properties:
+      Description: Allow node to communicate with each other
+      FromPort: 0
+      GroupId: !Ref NodeSecurityGroup
+      IpProtocol: "-1"
+      SourceSecurityGroupId: !Ref NodeSecurityGroup
+      ToPort: 65535
+  
+  ClusterControlPlaneSecurityGroupIngress:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    DependsOn: NodeSecurityGroup
+    Properties:
+      Description: Allow pods to communicate with the cluster API Server
+      FromPort: 443
+      GroupId: !Ref ControlPlaneSecurityGroup
+      IpProtocol: tcp
+      SourceSecurityGroupId: !Ref NodeSecurityGroup
+      ToPort: 443
+
+  ControlPlaneEgressToNodeSecurityGroup:
+    Type: "AWS::EC2::SecurityGroupEgress"
+    DependsOn: NodeSecurityGroup
+    Properties:
+      Description: Allow the cluster control plane to communicate with worker Kubelet and pods
+      DestinationSecurityGroupId: !Ref NodeSecurityGroup
+      FromPort: 1025
+      GroupId: !Ref ControlPlaneSecurityGroup
+      IpProtocol: tcp
+      ToPort: 65535
+  
+  ControlPlaneEgressToNodeSecurityGroupOn443:
+    Type: "AWS::EC2::SecurityGroupEgress"
+    DependsOn: NodeSecurityGroup
+    Properties:
+      Description: Allow the cluster control plane to communicate with pods running extension API servers on port 443
+      DestinationSecurityGroupId: !Ref NodeSecurityGroup
+      FromPort: 443
+      GroupId: !Ref ControlPlaneSecurityGroup
+      IpProtocol: tcp
+      ToPort: 443
+  
+  NodeSecurityGroupFromControlPlaneIngress:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    DependsOn: NodeSecurityGroup
+    Properties:
+      Description: Allow worker Kubelets and pods to receive communication from the cluster control plane
+      FromPort: 1025
+      GroupId: !Ref NodeSecurityGroup
+      IpProtocol: tcp
+      SourceSecurityGroupId: !Ref ControlPlaneSecurityGroup
+      ToPort: 65535
+
+  NodeSecurityGroupFromControlPlaneOn443Ingress:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    DependsOn: NodeSecurityGroup
+    Properties:
+      Description: Allow pods running extension API servers on port 443 to receive communication from cluster control plane
+      FromPort: 443
+      GroupId: !Ref NodeSecurityGroup
+      IpProtocol: tcp
+      SourceSecurityGroupId: !Ref ControlPlaneSecurityGroup
+      ToPort: 443
+ 
+  
+  # IMPORTANT NOTE: We have to define NodeGroup (type: AWS::EKS::Nodegroup), without this no woker nodes will be attach to cluster
+  WorkerNodegroup:
+    Type: AWS::EKS::Nodegroup
+    Properties:
+      ClusterName: !Ref ClusterName
+      NodeRole: !GetAtt NodeInstanceRole.Arn
+      NodegroupName: NodeGroup01
+      RemoteAccess:
+        Ec2SshKey: !Ref KeyName
+      ScalingConfig:
+        MinSize: 1
+        DesiredSize: 1
+        MaxSize: 1
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+    DependsOn: [EKSCluster, NodeInstanceRole]

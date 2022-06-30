@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: svc-k8s-attack
+  name: service-k8s-attack
+  namespace: default
+spec:
+  ports:
+  - name: tcp-8080
+    port: 8080
+    protocol: TCP
+    targetPort: k8s-attack-port
+  selector:
+    app: k8s-attack
+  type: LoadBalancer

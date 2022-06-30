@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-attack
+  labels:
+    app: k8s-attack
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: k8s-attack
+  template:
+    metadata:
+      labels:
+        app: k8s-attack
+    spec:
+      containers:
+        - name: k8s-attack
+          image: leandro2m/k8s-attack
+          ports:
+          - name: k8s-attack-port
+            containerPort: 8080
+        - name: app-python
+          image: leandro2m/example
+          ports:
+          - name: k8s-attack-port
+            containerPort: 8000
+---
