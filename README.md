@@ -1,1 +1,1 @@
-<h1>CloudFormation Templates for EKS and application </h1>
+<h1>Workshop FortiCNP - EKS Use Case </h1>
