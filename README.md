@@ -43,12 +43,12 @@ It will take around 20 minutes to complete.
 <h3>Deploy Application</h3>
 <p>Follow the  process below to deploy a flaw application on top of EKS</p>
 <ul>
-<li>1. Connect to an EC2 Bastion host created. If you have Key Pair you can use it to connect through SSH. If not, use SSM Connect Button</li>
+<li>1. Connect to an EC2 Bastion host created. If you have Key Pair you can use it to connect through SSH. If not, use Connect button available in the console</li>
 <li>2. Open the folder forticnp-k8s/application available in the root path.</li>
 <li>3. Deploy the application with the following command.
 kubectl create -f deployment_k8s_attack.yaml
 </li>
-<li>3. Deploy the service to expose the application with the following command.
+<li>4. Deploy the service to expose the application with the following command.
 kubectl create -f service_k8s_attack.yaml
 </li>
 </ul>
