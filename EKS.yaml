@@ -427,7 +427,8 @@ Resources:
       ClusterName: !Ref ClusterName
       NodeRole: !GetAtt NodeInstanceRole.Arn
       NodegroupName: NodeGroup01
-      RemoteAccess: !Ref KeyName
+      RemoteAccess: 
+        Ec2SshKey: !Ref KeyName
       ScalingConfig:
         MinSize: 1
         DesiredSize: 1
@@ -451,8 +452,8 @@ Resources:
       KeyName: 
         Fn::If:
         - Has-EC2-Key
-        - !Ref: KeyName
-        - !Ref: AWS::NoValue
+        - !Ref KeyName
+        - !Ref AWS::NoValue
       IamInstanceProfile: !Ref BastionInstanceProfile
       NetworkInterfaces: 
       - AssociatePublicIpAddress: "true"

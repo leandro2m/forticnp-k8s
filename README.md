@@ -52,3 +52,10 @@ kubectl create -f deployment_k8s_attack.yaml
 kubectl create -f service_k8s_attack.yaml
 </li>
 </ul>
+
+<h3>Accessing the Instance Metadata service from a compromised pod</h3>
+<ul>
+<li>1. Open the application URL. Get the URL with the command below.
+<p> kubectl get svc service-k8s-attack</p>
+</li>
+</ul>
