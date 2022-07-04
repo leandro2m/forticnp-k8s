@@ -12,9 +12,13 @@ Parameters:
     Type: String
     Default: ""
     Description: "Arguments to pass to the bootstrap script. See files/bootstrap.sh in https://github.com/awslabs/amazon-eks-ami"
-  NodeImageIdSSMParam:
+  # NodeImageIdSSMParam:
+  #   Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+  #   Default: /aws/service/eks/optimized-ami/1.22/amazon-linux-2/recommended/image_id
+  #   Description: AWS Systems Manager Parameter Store parameter of the AMI ID for the worker node instances.
+  BastionImageIdSSMParam:
     Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
-    Default: /aws/service/eks/optimized-ami/1.22/amazon-linux-2/recommended/image_id
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
     Description: AWS Systems Manager Parameter Store parameter of the AMI ID for the worker node instances.
   NodeGroupName:
     Type: String
@@ -231,6 +235,14 @@ Resources:
           - Arn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/my-role"
             Username: "AdminRole"
             Groups: ["system:masters"]
+        Users:
+          - Arn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:user/*"
+            Username: "CliUser"
+            Groups: ["system:masters"]
+        Roles:
+          - Arn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/my-role"
+            Username: "AdminRole"
+            Groups: ["system:masters"]
       Tags:
         - Key: ClusterName
           Value: !Ref ClusterName
@@ -441,3 +453,90 @@ Resources:
         - !Ref PublicSubnet1
         - !Ref PublicSubnet2
     DependsOn: [EKSCluster, NodeInstanceRole]
+
+
+  #============================================================================#
+  # EC2 Bastion Host + Security Group
+  #============================================================================#
+
+  Bastion:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref BastionImageIdSSMParam
+      InstanceType: t2.micro
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref BastionInstanceProfile
+      NetworkInterfaces: 
+      - AssociatePublicIpAddress: "true"
+        DeviceIndex: "0"
+        GroupSet: 
+          - Ref: "BastionAppSecurityGroup"
+        SubnetId: 
+          Ref: "PublicSubnet1"
+      UserData:
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash
+            yum update -y
+            yum install -y git
+            git clone https://github.com/leandro2m/forticnp-k8s
+            curl -o kubectl https://s3.us-west-2.amazonaws.com/amazon-eks/1.22.6/2022-03-09/bin/linux/amd64/kubectl
+            chmod +x ./kubectl
+            mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
+      Tags:
+        - Key: Name
+          Value: "Bastion EKS Host"
+
+
+  BastionAppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for Bastion Instance"
+      VpcId: !Ref VPCEKS
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+
+   
+  BastionRole: 
+    Type: "AWS::IAM::Role"
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: "Allow"
+            Principal: 
+              Service: 
+                - "ec2.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+      Path: "/"
+  RolePolicies: 
+    Type: "AWS::IAM::Policy"
+    Properties: 
+      PolicyName: "Bastion_EKS_Policy"
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'eks:*'
+            Resource: '*'
+      Roles: 
+        - Ref: "BastionRole"
+  BastionInstanceProfile: 
+    Type: "AWS::IAM::InstanceProfile"
+    Properties: 
+      Path: "/"
+      Roles: 
+        - Ref: "BastionRole"
+
+  
