@@ -8,10 +8,6 @@ Parameters:
     Type: String
     Description: The cluster name provided when the cluster was created. If it is incorrect, nodes will not be able to join the cluster.
     Default: FortiCNPEKS
-  BootstrapArguments:
-    Type: String
-    Default: ""
-    Description: "Arguments to pass to the bootstrap script. See files/bootstrap.sh in https://github.com/awslabs/amazon-eks-ami"
   # NodeImageIdSSMParam:
   #   Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
   #   Default: /aws/service/eks/optimized-ami/1.22/amazon-linux-2/recommended/image_id
@@ -24,6 +20,9 @@ Parameters:
     Type: String
     Default: EKSNodeGroup
     Description: Unique identifier for the Node Group.
+Conditions:
+  Has-EC2-Key:
+    !Not [ !Equals [ !Ref KeyName, '' ] ]
 
 Resources:
 
@@ -429,7 +428,12 @@ Resources:
       NodeRole: !GetAtt NodeInstanceRole.Arn
       NodegroupName: NodeGroup01
       RemoteAccess:
-        Ec2SshKey: !Ref KeyName
+        Ec2SshKey: 
+          !If:
+          - Has-EC2-Key
+          - Ref: KeyName
+          - Ref: AWS::NoValue
+      
       ScalingConfig:
         MinSize: 1
         DesiredSize: 1
@@ -450,7 +454,11 @@ Resources:
     Properties:
       ImageId: !Ref BastionImageIdSSMParam
       InstanceType: t2.micro
-      KeyName: !Ref KeyName
+      KeyName: 
+        !If:
+        - Has-EC2-Key
+        - Ref: KeyName
+        - Ref: AWS::NoValue
       IamInstanceProfile: !Ref BastionInstanceProfile
       NetworkInterfaces: 
       - AssociatePublicIpAddress: "true"
@@ -561,10 +569,10 @@ Resources:
       Status: Active
       UserName: !Ref EksUser
 
-  BotCredentialsStored:
+  EKSUserCredentialsStored:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: !Sub /bot/credentials/${EksUser}
+      Name: !Sub /eks/credentials/${EksUser}
       SecretString: !Sub '{"ACCESS_KEY":"${EksUserCredentials}","SECRET_KEY":"${EksUserCredentials.SecretAccessKey}"}'
 Outputs:
   AccessKeyID:
