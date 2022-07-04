@@ -64,7 +64,13 @@ kubectl create -f service_k8s_attack.yaml
 
 
 </li>
-<li>3. You can explore Instance Metadata. Copy and paste the command below in the form that will return informations about the EKS WorkerNode
-curl http://169.254.169.254/meta-data/iam/
+<li>3. You can explore Instance Metadata. Copy and paste the command below in the form that will return informations about the EKS WorkerNode.
+<p>http://169.254.169.254/latest/meta-data/</p>
+</li>
+<p>You can explore all Medata information</p>
+<li>4. You can grab the access key and secret key with the commands below.
+<p> Let's see whick IAM role is applied to EC2 WorkerNode with the command below. </p>
+<p>http://169.254.169.254/latest/meta-data/iam/security-credentials/</p>
+<img src='/iam_role_workernode.PNG'>
 </li>
 </ul>
