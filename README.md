@@ -57,6 +57,7 @@ kubectl create -f service_k8s_attack.yaml
 <ul>
 <li>1. Open the application URL. Get the URL with the command below.
 <p> kubectl get svc service-k8s-attack</p>
+<img src='/get_service.PNG'>
 </li>
 <li>2. Launch http://<replace_serviceURL>:8080.
 </li>
