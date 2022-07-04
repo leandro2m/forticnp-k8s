@@ -23,3 +23,12 @@ The main purpose of this project is to create an EKS cluster with a flaw applica
 <strong> IAM </strong>
 * IAM User for EKS Cluster management
 
+<strong> Bastion EC2 Instance </strong>
+* 1x EC2 Instance for EKS cluster api access/management
+
+
+<h3>Use Case</h3>
+<p>Protect your wokrload </p>
+
+<p>In this use case, we will discuss the risks of the AWS Instance Metadata service in AWS Elastic Kubernetes Service (EKS) clusters. We will demonstrate that deploying a flaw application with misconfiguration of AWS resources can have disastrous consequences in the AWS account.</p>
+<p><a href=https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html> Instance Metadata service </a> is an AWS API listening on a link-local IP address, 169.254.169.254. It is only accessible from EC2 instances and allows to retrieve many information about them.</p>
