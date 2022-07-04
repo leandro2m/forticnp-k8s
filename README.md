@@ -69,8 +69,19 @@ kubectl create -f service_k8s_attack.yaml
 </li>
 <p>You can explore all Medata information</p>
 <li>4. You can grab the access key and secret key with the commands below.
-<p> Let's see whick IAM role is applied to EC2 WorkerNode with the command below. </p>
+<p> Let's see which IAM role is applied to EC2 WorkerNode with the command below. </p>
 <p>http://169.254.169.254/latest/meta-data/iam/security-credentials/</p>
 <img src='/iam_role_workernode.PNG'>
+<p>IAM role Name: FortiCNPEKS1-NodeInstanceRole-BDYEZXD9YLRB</p>
+</li>
+<li>5. Now you can retrieve security credentials.
+<p>The following link retrieves security credentials for IAM name  FortiCNPEKS1-NodeInstanceRole-BDYEZXD9YLRB. Replace with IAM credential</p>
+<p>http://169.254.169.254/latest/meta-data/iam/security-credentials/FortiCNPEKS1-NodeInstanceRole-BDYEZXD9YLRB</p>
+</li>
+
+<li>5. You will get the security credentials. See in the image below.
+<img src='/security_credentials.PNG'>
+
+
 </li>
 </ul>
