@@ -58,4 +58,9 @@ kubectl create -f service_k8s_attack.yaml
 <li>1. Open the application URL. Get the URL with the command below.
 <p> kubectl get svc service-k8s-attack</p>
 </li>
+<li>2. Launch http://<replace_serviceURL>:8080.
+</li>
+<li>3. You can explore Instance Metadata. Copy and paste the command below in the form that will return informations about the EKS WorkerNode
+curl http://169.254.169.254/meta-data/iam/
+</li>
 </ul>
