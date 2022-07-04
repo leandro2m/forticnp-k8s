@@ -9,16 +9,16 @@ The main purpose of this project is to create an EKS cluster with a flaw applica
 <h3>Resources</h3>
 The following  resources will be deployed into your AWS account:
 
-<strong>VPC</strong>
+<h6>VPC</h6>
 * 1 x VPC
 * 4 x Subnets. 2 Publics and 2 Privates
 * 2 x Route Tables
 * 1 x Nat Gateway
 * 1 x IGW
 
-<strong>EKS Cluster</strong>
+<h6>EKS Cluster</h6>
 * 1 EKS Cluster with a single WorkerNode
 
-<strong> IAM </strong>
+<h6> IAM </h6>
 * IAM User for EKS Cluster management
 
