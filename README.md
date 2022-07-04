@@ -35,8 +35,8 @@ The main purpose of this project is to create an EKS cluster with a flaw applica
 <h3>Deploy AWS Resources</h3>
 <p>Follow the deployment process below to deploy EKS cluster in your AWS Account </p>
 <ul>
-<li>1. Deploy the cloudformation template Activate_AWSQS_extentation.yaml</li>
-<li>2. Deploy the cloudformation template EKS.yaml</li>
+1. Deploy the cloudformation template Activate_AWSQS_extentation.yaml
+2. Deploy the cloudformation template EKS.yaml
 It will take around 20 minutes to complete.
 </ul>
 
@@ -44,11 +44,11 @@ It will take around 20 minutes to complete.
 <p>Follow the  process below to deploy a flaw application on top of EKS</p>
 <ul>
 1. Connect to an EC2 Bastion host created. If you have Key Pair you can use it to connect through SSH. If not, use Connect button available in the console
-<li>2. Open the folder forticnp-k8s/application available in the root path.</li>
-<li>3. Deploy the application with the following command.
+2. Open the folder forticnp-k8s/application available in the root path.
+3. Deploy the application with the following command.
 kubectl create -f deployment_k8s_attack.yaml
-</li>
-<li>4. Deploy the service to expose the application with the following command.
+
+4. Deploy the service to expose the application with the following command.
 kubectl create -f service_k8s_attack.yaml
-</li>
+
 </ul>
