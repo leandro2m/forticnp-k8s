@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Amazon EKS - Node Group
+Description: Deploy VPC and EKS Cluster for FortiCNP Workshop
 Parameters:
   KeyName:
     Type: "AWS::EC2::KeyPair::KeyName"
@@ -38,9 +38,10 @@ Resources:
               Service:
                 - eks.amazonaws.com
             Action: sts:AssumeRole
+      Path: "/"
       ManagedPolicyArns: 
-        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
-        - arn:aws:iam::aws:policy/AmazonEKSServicePolicy
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSClusterPolicy'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSServicePolicy'
   
   # VPC EKS
 
@@ -220,23 +221,7 @@ Resources:
       EnabledClusterLoggingTypes: ["api","audit","authenticator","controllerManager", "scheduler"]
       KubernetesApiAccess:
         Users:
-          - Arn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:user/cli"
-            Username: "CliUser"
-            Groups: ["system:masters"]
-        Roles:
-          - Arn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/my-role"
-            Username: "AdminRole"
-            Groups: ["system:masters"]
-        Users:
           - Arn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:user/eks"
-            Username: "CliUser"
-            Groups: ["system:masters"]
-        Roles:
-          - Arn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/my-role"
-            Username: "AdminRole"
-            Groups: ["system:masters"]
-        Users:
-          - Arn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:user/*"
             Username: "CliUser"
             Groups: ["system:masters"]
         Roles:
@@ -461,6 +446,7 @@ Resources:
 
   Bastion:
     Type: AWS::EC2::Instance
+    DependsOn: EKSCluster
     Properties:
       ImageId: !Ref BastionImageIdSSMParam
       InstanceType: t2.micro
@@ -474,15 +460,23 @@ Resources:
         SubnetId: 
           Ref: "PublicSubnet1"
       UserData:
-        Fn::Base64: 
-          !Sub |
-            #!/bin/bash
+        Fn::Base64: !Sub |
+            #!/bin/bash -xe
             yum update -y
             yum install -y git
             git clone https://github.com/leandro2m/forticnp-k8s
             curl -o kubectl https://s3.us-west-2.amazonaws.com/amazon-eks/1.22.6/2022-03-09/bin/linux/amd64/kubectl
             chmod +x ./kubectl
             mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
+            cat > ~/load_env.sh << 'EOF'
+            export ACCOUNT_ID=${AWS::AccountId}
+            export AWS_DEFAULT_REGION=${AWS::Region}
+            export AWS_ACCESS_KEY_ID=${EksUserCredentials}
+            export AWS_SECRET_ACCESS_KEY=${EksUserCredentials.SecretAccessKey}
+            aws eks update-kubeconfig --region ${AWS::Region} --name FortiCNPEKS
+            EOF
+            chmod +x ~/load_env.sh
+            sudo cp ~/load_env.sh /etc/profile.d/load_env.sh
       Tags:
         - Key: Name
           Value: "Bastion EKS Host"
@@ -539,4 +533,44 @@ Resources:
       Roles: 
         - Ref: "BastionRole"
 
+
+ #============================================================================#
+  # IAM EKS User
+  #============================================================================#
+
+  EksUser:
+    Type: AWS::IAM::User
+    Properties:
+      Path: /
+      UserName: eks
+      Policies:
+        - PolicyName: eks-access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - "eks:*"
+              - "ec2:DescribeInstances"
+              - "eks:DescribeCluster"
+              Resource: '*'
+
+  EksUserCredentials:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      Status: Active
+      UserName: !Ref EksUser
+
+  BotCredentialsStored:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub /bot/credentials/${EksUser}
+      SecretString: !Sub '{"ACCESS_KEY":"${EksUserCredentials}","SECRET_KEY":"${EksUserCredentials.SecretAccessKey}"}'
+Outputs:
+  AccessKeyID:
+    Value: !Ref EksUserCredentials
+  SecretAccessKey:
+    Value: !GetAtt EksUserCredentials.SecretAccessKey
+  User:
+    Value: !Ref EksUser
   
