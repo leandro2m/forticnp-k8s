@@ -35,7 +35,7 @@ The main purpose of this project is to create an EKS cluster with a flaw applica
 <h3>Deploy AWS Resources</h3>
 <p>Follow the deployment process below to deploy EKS cluster in your AWS Account </p>
 <ul>
-<li>1. First you need to deploy the Cloudformation template filename Activate_AWSQS_extentation.yaml. This file will activate CloudFormation Extension <strong>AWSQS::EKS::Cluster</strong>. For more information about it you can see in the this <a href="https://github.com/aws-quickstart/quickstart-amazon-eks-cluster-resource-provider"> link</a></li>
+<li>1. First you need to deploy the Cloudformation template filename Activate_AWSQS_extentation.yaml. This file will activate CloudFormation Extension <strong>AWSQS::EKS::Cluster</strong>. For more information about it you can find <a href="https://github.com/aws-quickstart/quickstart-amazon-eks-cluster-resource-provider"> here</a></li>
 <li>2. Deploy the cloudformation template EKS.yaml</li>
 It will take around 20 minutes to complete.
 </ul>
