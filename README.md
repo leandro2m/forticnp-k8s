@@ -37,4 +37,5 @@ The main purpose of this project is to create an EKS cluster with a flaw applica
 <ul>
 <li>1. Deploy the cloudformation template Activate_AWSQS_extentation.yaml</li>
 <li>2. Deploy the cloudformation template EKS.yaml</li>
+It will take around 20 minutes to complete.
 </ul>
