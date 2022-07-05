@@ -57,10 +57,10 @@ kubectl create -f service_k8s_attack.yaml
 <ul>
 <li>1. Open the application URL. Get the URL with the command below.
 <p> kubectl get svc service-k8s-attack</p>
-<img src='/get_service.PNG'>
+<img src='/img/get_service.PNG'>
 </li>
 <li>2. Launch http://your_url_service:8080.
-<img src='/home_page.PNG'>
+<img src='/img/home_page.PNG'>
 
 
 </li>
@@ -71,7 +71,7 @@ kubectl create -f service_k8s_attack.yaml
 <li>4. You can grab the access key and secret key with the commands below.
 <p> Let's see which IAM role is applied to EC2 WorkerNode with the command below. </p>
 <p>http://169.254.169.254/latest/meta-data/iam/security-credentials/</p>
-<img src='/iam_role_workernode.PNG'>
+<img src='/img/iam_role_workernode.PNG'>
 <p>IAM role Name: FortiCNPEKS1-NodeInstanceRole-BDYEZXD9YLRB</p>
 </li>
 <li>5. Now you can retrieve security credentials.
@@ -80,7 +80,7 @@ kubectl create -f service_k8s_attack.yaml
 </li>
 
 <li>5. You will get the security credentials. As you can see in the image below.
-<img src='/security_credentials.PNG'>
+<img src='/img/security_credentials.PNG'>
 </li>
 
 <li>6. You can use it to have aditional access. For instance, list S3 buckets available in your AWS account.
@@ -91,6 +91,6 @@ kubectl create -f service_k8s_attack.yaml
 <p> export AWS_SECRET_ACCESS_KEY="New_Secret_Key"</p>
 <p> export AWS_SESSION_TOKEN="Token"</p>
 </li>
-<img src='/new_access_credentials.PNG'>
+<img src='/img/new_access_credentials.PNG'>
 
 </ul>
