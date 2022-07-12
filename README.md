@@ -62,7 +62,7 @@ kubectl create -f anonymous.yaml
 <p> kubectl get svc service-k8s-attack</p>
 <img src='/img/get_service.PNG'>
 </li>
-<li>2. "Launch http://<EXTERNAL-IP from previous command>:8080.
+<li>2. "Launch http://<EXTERNAL-IP from previous command>:8080".
 <img src='/img/home_page.PNG'>
 
 
