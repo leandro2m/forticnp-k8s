@@ -70,7 +70,7 @@ kubectl create -f anonymous.yaml
 <li>3. You can explore Instance Metadata. Copy and paste the command below in the form that will return informations about the EKS WorkerNode.
 <p>http://169.254.169.254/latest/meta-data/</p>
 </li>
-<p>You can explore all Medata information</p>
+<p>You can explore all Metadata information</p>
 <li>4. You can grab the access key and secret key with the commands below.
 <p> Let's see which IAM role is applied to EC2 WorkerNode with the command below. </p>
 <p>http://169.254.169.254/latest/meta-data/iam/security-credentials/</p>
