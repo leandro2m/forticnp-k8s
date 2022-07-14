@@ -427,6 +427,8 @@ Resources:
       ClusterName: !Ref ClusterName
       NodeRole: !GetAtt NodeInstanceRole.Arn
       NodegroupName: NodeGroup01
+      LaunchTemplate:
+        LaunchTemplateSpecificationWorkerNode
       RemoteAccess: 
         Ec2SshKey: !Ref KeyName
       ScalingConfig:
@@ -437,6 +439,27 @@ Resources:
         - !Ref PublicSubnet1
         - !Ref PublicSubnet2
     DependsOn: [EKSCluster, NodeInstanceRole]
+
+
+ #============================================================================#
+  # EC2 Template Worker nodes
+  #============================================================================#
+  LaunchTemplateSpecificationWorkerNode:
+    Type: "AWS::EC2::LaunchTemplate"
+    Properties:
+      LaunchTemplateData:
+        UserData: !Base64
+          "Fn::Sub": |
+            #!/bin/bash
+            set -o xtrace
+            /etc/eks/bootstrap.sh ${ClusterName} ${BootstrapArguments}
+            wget https://inspector-agent.amazonaws.com/linux/latest/install
+            bash install
+            sudo /etc/init.d/awsagent start
+            /opt/aws/bin/cfn-signal --exit-code $? \
+                    --stack  ${AWS::StackName} \
+                    --resource NodeGroup  \
+                    --region ${AWS::Region}
 
 
   #============================================================================#
