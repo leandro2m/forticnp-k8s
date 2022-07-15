@@ -427,6 +427,8 @@ Resources:
       ClusterName: !Ref ClusterName
       NodeRole: !GetAtt NodeInstanceRole.Arn
       NodegroupName: NodeGroup01
+      LaunchTemplate: 
+        Id: !Ref LaunchTemplateSpecificationWorkerNode
       RemoteAccess: 
         Ec2SshKey: !Ref KeyName
       ScalingConfig:
@@ -439,7 +441,23 @@ Resources:
     DependsOn: [EKSCluster, NodeInstanceRole]
 
 
- 
+ #============================================================================#
+  # EC2 Template Worker nodes
+  #============================================================================#
+  LaunchTemplateSpecificationWorkerNode:
+    Type: "AWS::EC2::LaunchTemplate"
+    Properties:
+      LaunchTemplateData:
+        UserData: 
+          Fn::Base64: !Sub |
+              #!/bin/bash
+              set -o xtrace
+              /etc/eks/bootstrap.sh ${ClusterName}
+              wget https://inspector-agent.amazonaws.com/linux/latest/install
+              bash install
+              sudo /etc/init.d/awsagent start
+
+
   #============================================================================#
   # EC2 Bastion Host + Security Group
   #============================================================================#
