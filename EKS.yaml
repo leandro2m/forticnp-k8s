@@ -315,6 +315,7 @@ Resources:
       IpProtocol: tcp
       FromPort: 443
       ToPort: 443
+
 # Node Instance Role
 
   NodeInstanceRole:
@@ -342,6 +343,24 @@ Resources:
       Path: /
       Roles:
         - Ref: NodeInstanceRole
+
+# Instance Role allowing stop and terminate EC2 instances
+  EC2StopTerminatePolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: EC2WrongPermission
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'ec2:TerminateInstances'
+              - "ec2:StopInstances"
+            Resource: '*'
+      Roles: 
+        - !Ref NodeInstanceRole
+
+
 
   NodeSecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
